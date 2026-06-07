@@ -77,6 +77,7 @@ HOP_BY_HOP = {"host", "transfer-encoding"}
 
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+API_SERVER_KEY = os.environ.get("API_SERVER_KEY", "")
 if not ADMIN_PASSWORD:
     ADMIN_PASSWORD = secrets.token_urlsafe(16)
     print(f"[server] Admin credentials — username: {ADMIN_USERNAME}  password: {ADMIN_PASSWORD}", flush=True)
@@ -612,7 +613,15 @@ def _verify_auth_token(token: str) -> bool:
 
 
 def _is_authenticated(request: Request) -> bool:
-    return _verify_auth_token(request.cookies.get(COOKIE_NAME, ""))
+    if _verify_auth_token(request.cookies.get(COOKIE_NAME, "")):
+        return True
+    if API_SERVER_KEY:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+            if _hmac.compare_digest(token, API_SERVER_KEY):
+                return True
+    return False
 
 
 def _safe_return_to(value: str) -> str:
